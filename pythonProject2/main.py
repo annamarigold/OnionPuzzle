@@ -295,7 +295,7 @@ class UdpHeader:
         self.checksum = checksum
 
     def __str__(self):
-        return f"{self.port_sender}{self.port_receiver}.{self.packet_size}.{self.checksum}"
+        return f"{self.port_sender}{self.port_receiver}{self.packet_size}{self.checksum}"
 
 
 def string_to_udp_header(string):
@@ -338,26 +338,33 @@ def check_packet(ip_header, udp_header):
         return True
     return False
 
+
+
+
 def first_compl_sum (string):
-    summ = int('00000000', 2)
-    for z in range(0, len(string)-15, 16):
+    summ = int('0000000000000000', 2)
+    for z in range(0, len(string), 16):
         a = string[z:z+16]
         b = int(a, 2)
-        summ = summ | b
+        summ = summ + b
         if summ > int('1111111111111111', 2):
             summ = summ - int('10000000000000000', 2)
             summ = summ + int('0000000000000001', 2)
-    summ = ~summ
-    return summ
+    s = format(summ, '016b')
+    summ = ~summ & 0xFFFF
+    print(s + ' ' + format(summ, '016b'))
+    return format(summ, '016b')
 
 
 def udp_checksum(udp_header, ip_header, data):
+    if udp_header.packet_size == '':
+        return False
     if int(udp_header.packet_size, 2) % 2 == 1:
         data = data + '0'
     ip_pseudoheader = (ip_header.ip_sender + ip_header.ip_receiver +
                        '00000000' + ip_header.ip_udp_iana + udp_header.packet_size)
     message = ip_pseudoheader + udp_header.__str__() + data
-    summ = int('00000000', 2)
+    summ = ''
     summ = first_compl_sum(message)
     if str(summ) == udp_header.checksum:
         return True
@@ -371,7 +378,7 @@ def get_packet(datagramma):
     if check_packet(ip_header, udp_header):
         b = int(udp_header.packet_size, 2) - 8
         data = datagramma[224:224+(b*8)]
-    udp_checksum(udp_header, ip_header, data)
+    # udp_checksum(udp_header, ip_header, data)
     data = encode_str(data, 5)
     return data
 
