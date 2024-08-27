@@ -1,7 +1,4 @@
-# This is a sample Python script.
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
 def XOR(a, b):#XOR  for 2 bytes
     st = ''
@@ -182,12 +179,62 @@ def layer4_main():
     return result
 
 
-# layer1_main()
-# layer2_main()
-# layer3_main()
-# layer4_main()
 
-def header_description():
+class IpHeader:
+    def __init__(self, ip_version,
+ip_header_size,
+ip_first_byte,
+ip_packet_size,
+ip_id,
+ip_frag_flag,
+ip_ttl,
+ip_udp_iana,
+ip_header_checksum,
+ip_sender,
+ip_receiver):
+      self.ip_version = ip_version
+      self.ip_header_size = ip_header_size
+      self.ip_first_byte = ip_first_byte
+      self.ip_packet_size = ip_packet_size
+      self.ip_id = ip_id
+      self.ip_frag_flag = ip_frag_flag
+      self.ip_ttl = ip_ttl
+      self.ip_udp_iana = ip_udp_iana
+      self.ip_header_checksum = ip_header_checksum
+      self.ip_sender = ip_sender
+      self.ip_receiver = ip_receiver
+
+    def __str__(self):
+        return f"{self.ip_version}{self.ip_header_size}{self.ip_first_byte}{self.ip_packet_size}{self.ip_id}{self.ip_frag_flag}{self.ip_ttl}{self.ip_udp_iana}{self.ip_header_checksum}{self.ip_sender}{self.ip_receiver}"
+
+
+def string_to_ip_header(string):
+    ip_version = string[0:4]
+    ip_header_size = string[4:8]
+    ip_first_byte = string[8:16]
+    ip_packet_size = string[16:32]
+    ip_id = string[32:48]
+    ip_frag_flag = string[48:64]
+    ip_ttl = string[64:72]
+    ip_udp_iana = string[72:80]
+    ip_header_checksum = string [80:96]
+    ip_sender = string[96:128]
+    ip_receiver = string[128:160]
+    ip_header = IpHeader(ip_version,
+                         ip_header_size,
+                         ip_first_byte,
+                         ip_packet_size,
+                         ip_id,
+                         ip_frag_flag,
+                         ip_ttl,
+                         ip_udp_iana,
+                         ip_header_checksum,
+                         ip_sender,
+                         ip_receiver)
+    return ip_header
+
+
+def ip_header_description():
     ip_version = '0100'#const
     ip_header_size = '0101'#const
     ip_first_byte = '00000000'#no need
@@ -198,7 +245,21 @@ def header_description():
     ip_udp_iana = '00010001' #UDP = 17
     ip_header_checksum = '0000000000000000' #always correct no need
     ip_sender = '00001010000000010000000100001010' #10.1.1.10
-    ip_reseiver = '00001010000000010000000111001000'#10.1.1.200
+    ip_receiver = '00001010000000010000000111001000'#10.1.1.200
+    ip_header_ref = IpHeader(ip_version,
+                    ip_header_size,
+                    ip_first_byte,
+                    ip_packet_size,
+                    ip_id,
+                    ip_frag_flag,
+                    ip_ttl,
+                    ip_udp_iana,
+                    ip_header_checksum,
+                    ip_sender,
+                    ip_receiver)
+    return ip_header_ref
+
+
 def ip_header_mask():
     ip_version = '1111'#const
     ip_header_size = '1111'#const
@@ -208,15 +269,108 @@ def ip_header_mask():
     ip_frag_flag='0000000000000000'#no fragmentation no need
     ip_ttl='00000000'#no need
     ip_udp_iana = '11111111' #UDP = 17
-    ip_header_checksum = '0000000000000000' #always correct no need
+    ip_header_checksum = '0000000000000000' #always correct in this task no need
     ip_sender = '11111111111111111111111111111111' #10.1.1.10
-    ip_reseiver = '11111111111111111111111111111111'#10.1.1.200
+    ip_receiver = '11111111111111111111111111111111'#10.1.1.200
     mask = (ip_version + ip_header_size + ip_first_byte +
               ip_packet_size + ip_id + ip_frag_flag + ip_ttl +
-              ip_udp_iana + ip_header_checksum + ip_sender + ip_reseiver)
+              ip_udp_iana + ip_header_checksum + ip_sender + ip_receiver)
     return mask
 
 
+def check_ip_header(ip_header):
+    ref = ip_header_description()
+    if ref.ip_version == ip_header.ip_version :
+        if ref.ip_header_size == ip_header.ip_header_size :
+            if ref.ip_udp_iana == ip_header.ip_udp_iana :
+                if ref.ip_sender == ip_header.ip_sender :
+                    return True
+    return False
+
+
+class UdpHeader:
+    def __init__(self, port_sender, port_receiver, packet_size, checksum):
+        self.port_sender = port_sender
+        self.port_receiver = port_receiver
+        self.packet_size = packet_size
+        self.checksum = checksum
+
+    def __str__(self):
+        return f"{self.port_sender}{self.port_receiver}.{self.packet_size}.{self.checksum}"
+
+
+def string_to_udp_header(string):
+    port_sender = string[0:16]
+    port_receiver = string[16:32]
+    packet_size = string[32:48]
+    checksum = string[48:64]
+    upd_header = UdpHeader(port_sender, port_receiver, packet_size, checksum)
+    return upd_header
+
+
+def udp_header_description():
+    port_sender = '0000000000000000'  # any port in this task
+    port_receiver = '1010010001010101'  # 42069
+    packet_size = '1111111111111111'  # min 8 byte max 65535 bytes for data+ip_header+udp+header
+    checksum = '0000000000000000'  # always correct in this task no need
+    upd_header = UdpHeader(port_sender, port_receiver, packet_size, checksum)
+    return upd_header
+
+
+def check_udp_header(udp_header):
+    ref = udp_header_description()
+    if ref.port_receiver == udp_header.port_receiver:
+        if ref.packet_size >= '0000000001000000':
+            return True
+    return False
+
+def udp_header_mask():
+    port_sender = '0000000000000000' #any port in this task
+    port_receiver = '1111111111111111' #42069
+    packet_size = '1111111111111111' # min 8 byte max 65535 bytes for data+ip_header+udp+header
+    checksum = '0000000000000000' #always correct in this task no need
+    mask = (port_sender + port_receiver + packet_size + checksum)
+    return mask
+
+
+def check_packet(ip_header, udp_header):
+    if check_udp_header(udp_header) and check_ip_header(ip_header):
+        return True
+    return False
+
+
+def get_packet(datagramma):
+    ip_header = string_to_ip_header(datagramma[0:160])
+    udp_header = string_to_udp_header(datagramma[160:224])
+    if check_packet(ip_header, udp_header):
+        b = int(udp_header.packet_size, 2) - 28  # 20bytes for IP and 8 bytes for UDP headers
+        data = datagramma[224:(b*8)]
+    data = encode_str(data, 5)
+    return data
+
+
+def layer5_main():
+    f = open("C:/IT/OnionPuzzle/files/layer5.txt", "r")
+    message = f.read()
+    f.close()
+    decoded_string = ''
+    decoded_4bytes = ''
+    for x in range(0, len(message), 5):
+        ch = message[x:x + 5]
+        decoded_4bytes = decode_5_symbols(ch, 5)
+        decoded_string = decoded_string + decoded_4bytes
+    t = open("C:/IT/OnionPuzzle/files/layer5_middle_response.txt", 'w', encoding="utf-8")
+    t.write(decoded_string)
+    t.close()
+    decoded_string = get_packet(decoded_string)
+    t = open("C:/IT/OnionPuzzle/files/layer5_response.txt", 'w', encoding="utf-8")
+    t.write(decoded_string)
+    t.close()
+# layer1_main()
+# layer2_main()
+# layer3_main()
+# layer4_main()
+layer5_main()
 
 #
 # f = open("C:/IT/OnionPuzzle/files/layer3.txt", "r")
