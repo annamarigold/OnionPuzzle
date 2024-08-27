@@ -179,7 +179,6 @@ def layer4_main():
     return result
 
 
-
 class IpHeader:
     def __init__(self, ip_version,
 ip_header_size,
@@ -324,6 +323,7 @@ def check_udp_header(udp_header):
             return True
     return False
 
+
 def udp_header_mask():
     port_sender = '0000000000000000' #any port in this task
     port_receiver = '1111111111111111' #42069
@@ -338,13 +338,40 @@ def check_packet(ip_header, udp_header):
         return True
     return False
 
+def first_compl_sum (string):
+    summ = int('00000000', 2)
+    for z in range(0, len(string)-15, 16):
+        a = string[z:z+16]
+        b = int(a, 2)
+        summ = summ | b
+        if summ > int('1111111111111111', 2):
+            summ = summ - int('10000000000000000', 2)
+            summ = summ + int('0000000000000001', 2)
+    summ = ~summ
+    return summ
+
+
+def udp_checksum(udp_header, ip_header, data):
+    if int(udp_header.packet_size, 2) % 2 == 1:
+        data = data + '0'
+    ip_pseudoheader = (ip_header.ip_sender + ip_header.ip_receiver +
+                       '00000000' + ip_header.ip_udp_iana + udp_header.packet_size)
+    message = ip_pseudoheader + udp_header.__str__() + data
+    summ = int('00000000', 2)
+    summ = first_compl_sum(message)
+    if str(summ) == udp_header.checksum:
+        return True
+    return False
+
 
 def get_packet(datagramma):
     ip_header = string_to_ip_header(datagramma[0:160])
     udp_header = string_to_udp_header(datagramma[160:224])
+    data = ''
     if check_packet(ip_header, udp_header):
-        b = int(udp_header.packet_size, 2) - 28  # 20bytes for IP and 8 bytes for UDP headers
-        data = datagramma[224:(b*8)]
+        b = int(udp_header.packet_size, 2) - 8
+        data = datagramma[224:224+(b*8)]
+    udp_checksum(udp_header, ip_header, data)
     data = encode_str(data, 5)
     return data
 
@@ -362,9 +389,15 @@ def layer5_main():
     t = open("C:/IT/OnionPuzzle/files/layer5_middle_response.txt", 'w', encoding="utf-8")
     t.write(decoded_string)
     t.close()
-    decoded_string = get_packet(decoded_string)
+    result = ''
+    i = 0
+    while i < len(decoded_string):
+        datagramma = decoded_string[i:len(decoded_string)]
+        temp = get_packet(datagramma)
+        result = result + temp
+        i = i + (len(temp)+28)*8   # 28 bytes for headers length
     t = open("C:/IT/OnionPuzzle/files/layer5_response.txt", 'w', encoding="utf-8")
-    t.write(decoded_string)
+    t.write(result)
     t.close()
 # layer1_main()
 # layer2_main()
