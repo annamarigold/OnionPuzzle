@@ -1,4 +1,4 @@
-
+import cryptography
 
 def XOR(a, b):#XOR  for 2 bytes
     st = ''
@@ -421,10 +421,6 @@ def layer5_main():
         decoded_4bytes = decode_5_symbols(ch, 5)
         decoded_string = decoded_string + decoded_4bytes
 
-    t = open("C:/IT/OnionPuzzle/files/layer5_middle_response.txt", 'w', encoding="utf-8")
-    t.write(decoded_string)
-    t.close()
-
     result = ''
     i = 0
     while i < len(decoded_string):
@@ -433,15 +429,71 @@ def layer5_main():
         if temp.valid:
             result = result + temp.packet_data
         i = i + (len(temp.packet_data)*8 + len(temp.ip_header) + len(temp.udp_header))
+
     t = open("C:/IT/OnionPuzzle/files/layer5_response.txt", 'w', encoding="utf-8")
     t.write(result)
     t.close()
 
-# layer1_main()
-# layer2_main()
-# layer3_main()
-# layer4_main()
-layer5_main()
+
+def string_to_hex_string(string):
+    byte = bytes()
+    for i in range(0, len(string), 8):
+        s = int(string[i:i+8], 2)
+        byte = byte + s.to_bytes((s.bit_length() + 7) // 8, byteorder='big')
+    return byte
+
+
+
+def layer6_main():
+    f = open("C:/IT/OnionPuzzle/files/layer6.txt", "r")
+    message = f.read()
+    f.close()
+    decoded_string = ''
+
+    for x in range(0, len(message), 5):
+        ch = message[x:x + 5]
+        decoded_4bytes = decode_5_symbols(ch, 5)
+        decoded_string = decoded_string + decoded_4bytes
+
+    # decoded_string = encode_str(decoded_string, 1)
+    # t = open("C:/IT/OnionPuzzle/files/layer6_middle_response.txt", 'w', encoding="utf-8")
+    # t.write(decoded_string)
+    # t.close()
+
+
+    KEK = decoded_string[0:256]
+    bKEK = string_to_hex_string(KEK)
+
+    IV_for_wkey = decoded_string[256:320]
+    bIV_for_wkey = string_to_hex_string(IV_for_wkey)
+
+    encrypted_key = decoded_string[320:640]
+    bencrypted_key = string_to_hex_string(encrypted_key)
+
+    from cryptography.hazmat.primitives import keywrap
+    decrtptd_key = keywrap.aes_key_unwrap(bKEK, bencrypted_key, bIV_for_wkey )
+
+    IV_payload = decoded_string[640:768]
+    bIV_payload = string_to_hex_string(IV_payload)
+
+    payload = decoded_string[768:len(decoded_string)]
+    bpayload = string_to_hex_string(payload)
+
+    from cryptography.hazmat.primitives.ciphers.modes import CTR
+    mode = CTR(bIV_payload)
+
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    cipher = Cipher(algorithms.AES(decrtptd_key), mode)
+
+    decryptor = cipher.decryptor()
+    res = decryptor.update(bpayload) + decryptor.finalize()
+
+    print(res)
+    return res
+
+
+
+layer6_main()
 
 #
 # f = open("C:/IT/OnionPuzzle/files/layer3.txt", "r")
