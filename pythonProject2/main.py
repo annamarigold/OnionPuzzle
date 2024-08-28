@@ -207,6 +207,14 @@ ip_receiver):
         return f"{self.ip_version}{self.ip_header_size}{self.ip_first_byte}{self.ip_packet_size}{self.ip_id}{self.ip_frag_flag}{self.ip_ttl}{self.ip_udp_iana}{self.ip_header_checksum}{self.ip_sender}{self.ip_receiver}"
 
 
+class Packet:
+    def __init__(self, ip_header, udp_header, packet_data, valid):
+        self.ip_header = ip_header
+        self.udp_header = udp_header
+        self.packet_data = packet_data
+        self.valid = valid
+
+
 def string_to_ip_header(string):
     ip_version = string[0:4]
     ip_header_size = string[4:8]
@@ -339,34 +347,35 @@ def check_packet(ip_header, udp_header):
     return False
 
 
-
-
 def first_compl_sum (string):
     summ = int('0000000000000000', 2)
     for z in range(0, len(string), 16):
         a = string[z:z+16]
+        while len(a) < 16:
+            a = a + '0'
         b = int(a, 2)
         summ = summ + b
-        if summ > int('1111111111111111', 2):
-            summ = summ - int('10000000000000000', 2)
-            summ = summ + int('0000000000000001', 2)
+    while summ > int('1111111111111111', 2):
+        byte_str = format(summ, '032b')
+        high_byte_str = byte_str[0:16]
+        low_byte_str = byte_str[16:32]
+        summ = int(high_byte_str, 2) + int(low_byte_str, 2)
+    return summ
+
+
+def udp_checksum(udp_header, ip_header, udp_data):
+    if int(udp_header.packet_size, 2) % 2 == 1:
+        udp_data = udp_data + '0'
+    ip_pseudoheader = (ip_header.ip_sender + ip_header.ip_receiver +
+                       '00000000' + '00010001' + udp_header.packet_size)
+    checksum = udp_header.checksum
+    udp_header.checksum = '0000000000000000'
+    message = ip_pseudoheader + udp_header.__str__() + udp_data
+    summ = first_compl_sum(message)
     s = format(summ, '016b')
     summ = ~summ & 0xFFFF
-    print(s + ' ' + format(summ, '016b'))
-    return format(summ, '016b')
-
-
-def udp_checksum(udp_header, ip_header, data):
-    if udp_header.packet_size == '':
-        return False
-    if int(udp_header.packet_size, 2) % 2 == 1:
-        data = data + '0'
-    ip_pseudoheader = (ip_header.ip_sender + ip_header.ip_receiver +
-                       '00000000' + ip_header.ip_udp_iana + udp_header.packet_size)
-    message = ip_pseudoheader + udp_header.__str__() + data
-    summ = ''
-    summ = first_compl_sum(message)
-    if str(summ) == udp_header.checksum:
+    print(s + ' ' + format(summ, '016b') + ' ' + checksum)
+    if format(summ, '016b') == checksum:
         return True
     return False
 
@@ -374,13 +383,14 @@ def udp_checksum(udp_header, ip_header, data):
 def get_packet(datagramma):
     ip_header = string_to_ip_header(datagramma[0:160])
     udp_header = string_to_udp_header(datagramma[160:224])
-    data = ''
+    packet = Packet(datagramma[0:160], datagramma[160:224], '', False)
     if check_packet(ip_header, udp_header):
         b = int(udp_header.packet_size, 2) - 8
         data = datagramma[224:224+(b*8)]
-    # udp_checksum(udp_header, ip_header, data)
-    data = encode_str(data, 5)
-    return data
+        packet.valid = udp_checksum(udp_header, ip_header, data)
+        data = encode_str(data, 5)
+        packet.packet_data = data
+    return packet
 
 
 def layer5_main():
@@ -398,11 +408,13 @@ def layer5_main():
     t.close()
     result = ''
     i = 0
+    print(len(decoded_string))
     while i < len(decoded_string):
         datagramma = decoded_string[i:len(decoded_string)]
         temp = get_packet(datagramma)
-        result = result + temp
-        i = i + (len(temp)+28)*8   # 28 bytes for headers length
+        if temp.valid:
+            result = result + temp.packet_data
+        i = i + (len(temp.packet_data)*8 + len(temp.ip_header) + len(temp.udp_header))
     t = open("C:/IT/OnionPuzzle/files/layer5_response.txt", 'w', encoding="utf-8")
     t.write(result)
     t.close()
