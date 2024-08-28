@@ -247,7 +247,7 @@ def ip_header_description():
     ip_version = '0100'#const
     ip_header_size = '0101'#const
     ip_first_byte = '00000000'#no need
-    ip_packet_size = '0000000000000000'#valuable info
+    ip_packet_size = '0000000000011100'#min_size
     ip_id='0000000000000000'#no need
     ip_frag_flag='0000000000000000'#no fragmentation no need
     ip_ttl='00000000'#no need
@@ -289,11 +289,12 @@ def ip_header_mask():
 
 def check_ip_header(ip_header):
     ref = ip_header_description()
-    if ref.ip_version == ip_header.ip_version :
-        if ref.ip_header_size == ip_header.ip_header_size :
-            if ref.ip_udp_iana == ip_header.ip_udp_iana :
-                if ref.ip_sender == ip_header.ip_sender :
-                    return True
+    if ref.ip_version == ip_header.ip_version:
+        if ref.ip_header_size == ip_header.ip_header_size:
+            if ref.ip_udp_iana == ip_header.ip_udp_iana:
+                if ref.ip_sender == ip_header.ip_sender:
+                    if ref.ip_packet_size <= ip_header.ip_packet_size:
+                        return True
     return False
 
 
@@ -341,12 +342,6 @@ def udp_header_mask():
     checksum = '0000000000000000' #always correct in this task no need
     mask = (port_sender + port_receiver + packet_size + checksum)
     return mask
-
-
-def check_packet(ip_header, udp_header):
-    if check_udp_header(udp_header) and check_ip_header(ip_header):
-        return True
-    return False
 
 
 def first_compl_sum (string):
@@ -398,10 +393,18 @@ def get_packet(datagramma):
     ip_header = string_to_ip_header(datagramma[0:160])
     udp_header = string_to_udp_header(datagramma[160:224])
     packet = Packet(datagramma[0:160], datagramma[160:224], '', False)
-    if check_packet(ip_header, udp_header):
-        b = int(udp_header.packet_size, 2) - 8
+
+    # tmp = 'false'
+    # if ip_header.ip_packet_size == udp_header.packet_size:
+    #     tmp = 'true'
+    # print(format(int(ip_header.ip_packet_size, 2)) + ' ' + format(int(udp_header.packet_size, 2)))
+
+    if check_ip_header(ip_header):
+        b = int(ip_header.ip_packet_size, 2) - 28
         data = datagramma[224:224+(b*8)]
-        packet.valid = udp_checksum(udp_header, ip_header, data)
+        if check_udp_header(udp_header):
+            if int(udp_header.packet_size, 2) + 20 == int(ip_header.ip_packet_size, 2):
+                packet.valid = udp_checksum(udp_header, ip_header, data)
         data = encode_str(data, 5)
         packet.packet_data = data
     return packet
