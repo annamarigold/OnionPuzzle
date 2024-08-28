@@ -69,6 +69,7 @@ def layer3(text_binary):
         output_string = output_string + byte
     return output_string
 
+
 def layer1_main():
     f = open("C:/IT/OnionPuzzle/files/layer1.txt", "r")
     message = f.read()
@@ -84,6 +85,7 @@ def layer1_main():
     t = open("C:/IT/OnionPuzzle/files/layer1_response.txt", 'w', encoding="utf-8")
     t.write(decoded_string)
     t.close()
+
 
 def layer2_main():
     f = open("C:/IT/OnionPuzzle/files/layer2.txt", "r")
@@ -366,16 +368,28 @@ def first_compl_sum (string):
 def udp_checksum(udp_header, ip_header, udp_data):
     if int(udp_header.packet_size, 2) % 2 == 1:
         udp_data = udp_data + '0'
+        
     ip_pseudoheader = (ip_header.ip_sender + ip_header.ip_receiver +
                        '00000000' + '00010001' + udp_header.packet_size)
-    checksum = udp_header.checksum
+    
+    udp_checksum = udp_header.checksum
+    ip_checksum = ip_header.ip_header_checksum
+    
+    ip_header.ip_header_checksum = '0000000000000000'
     udp_header.checksum = '0000000000000000'
+    
+    ip_header_str = ip_header.__str__()
+    ip_sum_calc = first_compl_sum(ip_header_str)
+    ip_sum_calc = ~ip_sum_calc & 0xFFFF
+    
     message = ip_pseudoheader + udp_header.__str__() + udp_data
-    summ = first_compl_sum(message)
-    s = format(summ, '016b')
-    summ = ~summ & 0xFFFF
-    print(s + ' ' + format(summ, '016b') + ' ' + checksum)
-    if format(summ, '016b') == checksum:
+    udp_sum_calc = first_compl_sum(message)
+    udp_sum_calc = ~udp_sum_calc & 0xFFFF
+
+    # print(format(udp_summ, '016b') + ' ' + udp_checksum)
+    # print(ip_checksum + ' ' + format(ip_sum_calc, '016b'))
+
+    if format(udp_sum_calc, '016b') == udp_checksum and ip_checksum == format(ip_sum_calc, '016b'):
         return True
     return False
 
@@ -398,17 +412,18 @@ def layer5_main():
     message = f.read()
     f.close()
     decoded_string = ''
-    decoded_4bytes = ''
+
     for x in range(0, len(message), 5):
         ch = message[x:x + 5]
         decoded_4bytes = decode_5_symbols(ch, 5)
         decoded_string = decoded_string + decoded_4bytes
+
     t = open("C:/IT/OnionPuzzle/files/layer5_middle_response.txt", 'w', encoding="utf-8")
     t.write(decoded_string)
     t.close()
+
     result = ''
     i = 0
-    print(len(decoded_string))
     while i < len(decoded_string):
         datagramma = decoded_string[i:len(decoded_string)]
         temp = get_packet(datagramma)
@@ -418,6 +433,7 @@ def layer5_main():
     t = open("C:/IT/OnionPuzzle/files/layer5_response.txt", 'w', encoding="utf-8")
     t.write(result)
     t.close()
+
 # layer1_main()
 # layer2_main()
 # layer3_main()
